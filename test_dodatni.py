@@ -5,6 +5,7 @@ from pretraga import parse
 from trgovci import xlsx_to_csv,extra_index
 from osvjezi import links
 from pivac import catalogues,verified_offers
+from usporedba import normalize
 
 class ExtraChainsTests(unittest.TestCase):
  def test_sparse_excel_preserves_price_columns(self):
@@ -17,6 +18,9 @@ class ExtraChainsTests(unittest.TestCase):
   b='naziv proizvoda\tmarka proizvoda\tmaloprod.cijena(EUR)\tMPC poseb.oblik prod\tcijena jed.mj.(EUR)\tjedinica mjere\tbarkod\tDostupan/Nedostupan\nMlijeko 1L\tMarka\t1,49\t0,99\t0,99\tKOM\t0123456789012\tdostupno\n'.encode()
   r=list(parse('Kaufland','test',b,'https://www.kaufland.hr'))[0]
   self.assertEqual((r['price'],r['source_unit_price'],r['available']),(0.99,0.99,'dostupno'))
+  b='naziv proizvoda\tmaloprod.cijena(EUR)\tneto količina(KG)\tjedinica mjere\nPileći batak\t2,49\t1\tKG\n'.encode()
+  r=list(parse('Kaufland','test',b,'https://www.kaufland.hr'))[0]
+  self.assertEqual(normalize(r,'batak')['normalized_price'],2.49)
  def test_kaufland_selects_latest_date_not_last_index_item(self):
   page='https://www.kaufland.hr/akcije-novosti/popis-mpc.html';idx='https://www.kaufland.hr/index.json'
   def item(dt):

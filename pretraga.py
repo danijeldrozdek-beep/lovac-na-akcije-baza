@@ -109,6 +109,8 @@ def parse(chain, location, blob, source):
         unitprice = number(get('cijena po JM', 'cijena za jedinicu mjere', 'cijena za jedinicu mjere EUR','cijena jed.mj.(EUR)'))
         unit = get('jedinica mjere')
         quantity = get('neto kolicina')
+        # Kaufland declares net weight even for liquids; use this only for KG sales.
+        if chain=='Kaufland' and norm(unit)=='kg':quantity=get('neto količina(KG)')
         # Lidl embeds quantity in its unit string. Plodine KOM does not identify kg/l basis.
         base = 'kg' if re.search(r'\bkg\b', norm(unit)) else 'l' if re.search(r'\bl\b', norm(unit)) else None
         if chain == 'Eurospin' and special and special > 0:
