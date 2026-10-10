@@ -1,7 +1,7 @@
 import io, json, tempfile, unittest, zipfile
 from datetime import date
 from pathlib import Path
-from pretraga import parse
+from pretraga import parse,toilet_paper
 from osvjezi import links,validate_csv
 from trgovci import index_files,location,xml_to_csv,download_studenac,download_files,TOMMY_INDEX,KONZUM_INDEX
 from usporedba import normalize
@@ -11,6 +11,11 @@ def xml(address='Trg Fontana 8/2 BUZET'):
     return f'<Proizvodi><ProdajniObjekt><Adresa>{address}</Adresa><Proizvodi>{item*100}</Proizvodi></ProdajniObjekt></Proizvodi>'.encode()
 
 class NewChainsTests(unittest.TestCase):
+    def test_toilet_paper_abbreviations_do_not_match_kitchen_paper(self):
+        for name in ('TP ZEWA CLASSIC SOFT 3SL 16/1','TOAL. PAP. VIOLETA BRESKVA 3-SL 10 kom','PAPIR TOAL.8/1 VIOLETA 2SL'):
+            self.assertTrue(toilet_paper(name),name)
+        for name in ('KUHINJSKI PAPIR ZEWA','PAPIR UBRUSI','PAPAR BIJELI','TUNA RIO MARE'):
+            self.assertFalse(toilet_paper(name),name)
     def test_tommy_fields_and_current_special_price(self):
         blob=b'BARKOD_ARTIKLA,NAZIV_ARTIKLA,BRAND,JEDINICA_MJERE,NETO_KOLICINA,MPC,MPC_POSEBNA_PRODAJA,CIJENA_PO_JM\n4006381333931,MLIJEKO 4X1 L,Marka,kom,4,,3.2,0.8\n'
         r=list(parse('Tommy','sample',blob,'https://example.com'))[0]

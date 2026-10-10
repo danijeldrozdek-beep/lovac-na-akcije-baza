@@ -1,7 +1,7 @@
 """Prepare the full offline SQLite catalogue for the native Android app."""
 import gzip, json, re, sqlite3, sys
 from pathlib import Path
-from pretraga import ROOT, parse, norm, match
+from pretraga import ROOT, parse, norm, match, toilet_paper
 from usporedba import size, normalize, store_info
 
 def unit_info(row):
@@ -41,12 +41,14 @@ def export():
                 if key not in products:
                     pid=len(products)+1
                     tags='|'+ '|'.join(k for k in ('mlijeko','batak','vratina','svinjetina','jaja','kava','krumpir','secer','ulje') if match(k,row['name'])==1)+'|'
-                    db.execute('INSERT INTO products VALUES(?,?,?,?,?)',(pid,*key,norm(row['name']+' '+row['brand']),tags))
+                    search_name=norm(row['name']+' '+row['brand'])
+                    if toilet_paper(row['name']):search_name+=' toaletni papir'
+                    db.execute('INSERT INTO products VALUES(?,?,?,?,?)',(pid,*key,search_name,tags))
                     products[key]=pid
                 unit,per,note=unit_info(row)
                 # Paper, detergents, nappies and pet items have incomparable package sizes.
                 n=norm(row['name'])
-                if unit=='kom' and re.search(r'\b(papir\w*|toal\w*|ubrusi|pelene|pijesak|vlaz\w*|deterd\w*|prasak|omeks\w*)\b',n):
+                if unit=='kom' and (toilet_paper(row['name']) or re.search(r'\b(papir\w*|toal\w*|ubrusi|pelene|pijesak|vlaz\w*|deterd\w*|prasak|omeks\w*)\b',n)):
                     unit='';per=None;note='Pakiranje se uspoređuje prema broju komada, doza ili listova; jedinica nije potvrđena.'
                 avail='nedostupno' if norm(row['available'])=='nedostupno' else 'dostupno' if norm(row['available'])=='dostupno' else 'nepoznato'
                 rows.append((products[key],store_count,row['price'],unit,per,avail,note,row['barcode']))

@@ -88,6 +88,12 @@ def number(value):
     try: return float(value.replace(',', '.').strip())
     except (ValueError, AttributeError): return None
 
+def toilet_paper(name):
+    text=norm(name)
+    if re.search(r'\b(kuhinj\w*|ubrusi)\b',text):return False
+    return bool(re.search(r'^(tp|t p|t pap)\b',text) or
+                (re.search(r'\b(toalet\w*|toal|wc)\b',text) and re.search(r'\bpap\w*',text)))
+
 def parse(chain, location, blob, source):
     text = decode(blob)
     delimiter = ';' if text.splitlines()[0].count(';') > text.splitlines()[0].count(',') else ','
