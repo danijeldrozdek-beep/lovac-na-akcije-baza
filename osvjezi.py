@@ -8,7 +8,7 @@ from urllib.parse import quote, unquote, urljoin, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 from pretraga import ROOT, decode, parse, norm
 from usporedba import build
-from trgovci import download_files, download_studenac
+from trgovci import download_files, download_studenac, download_extra
 
 PAGES={'Plodine':'https://www.plodine.hr/info-o-cijenama',
        'Eurospin':'https://www.eurospin.hr/cjenik/',
@@ -16,7 +16,9 @@ PAGES={'Plodine':'https://www.plodine.hr/info-o-cijenama',
        'SPAR / INTERSPAR':'https://www.spar.hr/usluge/cjenici',
        'Studenac':'https://www.studenac.hr/cjenici/PROIZVODI-{date}.zip',
        'Tommy':'https://www.tommy.hr/objava-cjenika',
-       'Konzum':'https://www.konzum.hr/cjenici'}
+       'Konzum':'https://www.konzum.hr/cjenici',
+       'Stanić':'https://diskont.hr/cjenici/',
+       'Kaufland':'https://www.kaufland.hr/akcije-novosti/popis-mpc.html'}
 STATE=ROOT/'cjenici-stanje.json'
 
 def now():return datetime.now().astimezone().isoformat(timespec='seconds')
@@ -141,6 +143,10 @@ def read_state():
     return json.loads(STATE.read_text(encoding='utf-8')) if STATE.exists() else {'chains':{},'status':[]}
 
 def update_one(chain,previous,folder,today,fetch=get):
+    if chain in ('Stanić','Kaufland'):
+        fresh=download_extra(chain,today,fetch,links,validate_csv,folder,ROOT,previous)
+        fresh['downloaded_at']=now()
+        return fresh,'Svi pronađeni istarski cjenici preuzeti i provjereni.'
     if chain in ('Konzum','Tommy'):
         fresh=download_files(chain,today,fetch,links,validate_csv,folder,ROOT,previous)
         fresh['downloaded_at']=now()
@@ -177,6 +183,12 @@ def refresh(progress=lambda message:None,fetch=get,today=None,build_screen=True)
         except Exception as e:
             statuses.append(dict(chain=chain,ok=False,message='Zadržani spremljeni podaci. '+str(e)[:220],date=old['date'] if old else '2026-10-10',checked_at=now()))
     state['status']=statuses;state['last_attempt']=now()
+    import pivac
+    try:
+        state['pivac']=pivac.refresh(fetch,ROOT)
+        state['pivac_status']='Rokovi kataloga provjereni. Cijene čekaju obradu izvornog kataloga.' if not state['pivac']['offers'] else 'Akcijske ponude provjerene.'
+    except Exception as e:
+        state['pivac_status']='Provjera kataloga nije uspjela: '+str(e)[:120]
     if not build_screen:
         atomic_write(STATE,json.dumps(state,ensure_ascii=False,indent=2))
         progress('Cjenici spremljeni za Android katalog.')

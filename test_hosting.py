@@ -53,7 +53,7 @@ class HostingTests(unittest.TestCase):
             root=Path(d);folder,m=self.feed(root);original=(folder/'manifest.json').read_bytes()
             with patch.object(publisher,'ROOT',root),patch.object(publisher,'read_state',return_value={'chains':{}}):
                 with self.assertRaisesRegex(ValueError,'Nema ispravnog'):publisher.publish(False)
-            for name in ('pretraga.py','usporedba.py','trgovci.py'):(root/name).write_text('# fixture')
+            for name in ('pretraga.py','usporedba.py','trgovci.py','pivac.py','pivac-akcije.json'):(root/name).write_text('# fixture')
             (root/'izvezi-katalog.py').write_text("def export():\n    raise ValueError('Parser failed')\n")
             state={'chains':{k:dict(date='2026-10-10',sha256='new') for k in publisher.PAGES}}
             with patch.object(publisher,'ROOT',root),patch.object(publisher,'read_state',return_value=state):

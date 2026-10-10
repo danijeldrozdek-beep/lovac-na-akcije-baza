@@ -142,3 +142,99 @@ def download_studenac(today,fetch,validate,folder,root,previous=None):
                 files.append(dict(name=entry.filename,path=path.relative_to(root).as_posix(),source=url,city=city,address=address))
         if files:return dict(date=day.isoformat(),url=url,sha256=hashlib.sha256(blob).hexdigest(),files=files)
     raise ValueError('Studenac nema istarskog cjenika u zadnjih 7 dana.')
+
+# Addresses checked against diskont.hr/diskont-stanic-{city}/ on 10.10.2026.
+STANIC_STORES={
+ '731':('Poreč','Mate Vlašića 26/52'), '732':('Vodnjan','Ga Dalla Zonca BB'),
+ '733':('Umag','Ulica Ernesta Miloša 8A'), '734':('Pula','Bože Gumpca 34'),
+ '739':('Pula','Rizzijeva ulica 59'), '7302':('Medulin','Munida 23'),
+ '7307':('Rovinj','Fažanska ulica 3C'), '7308':('Labin','Štrmac 324')}
+
+
+def xlsx_to_csv(blob):
+    """Read sparse worksheet cells by their references, never shift empty columns."""
+    ns={'s':'http://schemas.openxmlformats.org/spreadsheetml/2006/main'}
+    with zipfile.ZipFile(io.BytesIO(blob)) as z:
+        if sum(f.file_size for f in z.infolist())>30_000_000:raise ValueError('Prevelik Excel cjenik.')
+        def xml(path):
+            b=z.read(path)
+            if b'<!DOCTYPE' in b or b'<!ENTITY' in b:raise ValueError('Nedopušten XML.')
+            return ET.fromstring(b)
+        strings=[]
+        if 'xl/sharedStrings.xml' in z.namelist():
+            strings=[''.join(t.text or '' for t in si.findall('.//s:t',ns)) for si in xml('xl/sharedStrings.xml').findall('s:si',ns)]
+        worksheet=xml('xl/worksheets/sheet1.xml')
+        rows=[]
+        for row in worksheet.findall('s:sheetData/s:row',ns):
+            values={}
+            for cell in row.findall('s:c',ns):
+                letters=re.match(r'[A-Z]+',cell.get('r',''))
+                if not letters:raise ValueError('Nedostaje Excel oznaka ćelije.')
+                col=0
+                for ch in letters[0]:col=col*26+ord(ch)-64
+                v=cell.find('s:v',ns);value=v.text if v is not None else ''.join(t.text or '' for t in cell.findall('s:is//s:t',ns))
+                if cell.get('t')=='s':value=strings[int(value)]
+                values[col-1]=value or ''
+            rows.append(values)
+    if not rows:raise ValueError('Prazan Excel cjenik.')
+    headers={i:norm(v) for i,v in rows[0].items()}
+    required={'naziv','barkod','mp cijena','jedinica mjere'}
+    if not required.issubset(set(headers.values())):raise ValueError('Promijenjen Stanić Excel format.')
+    out=io.StringIO();w=csv.writer(out,delimiter=';')
+    w.writerow(['naziv','marka','barkod','neto kolicina','jedinica mjere','MPC','MPC za vrijeme posebnog oblika prodaje','cijena za jedinicu mjere'])
+    for values in rows[1:]:
+        r={headers[i]:v for i,v in values.items() if i in headers}
+        if not r.get('naziv'):continue
+        w.writerow([r.get(k,'') for k in ('naziv','marka','barkod','neto kolicina','jedinica mjere','mp cijena','mpc u vrij pos obl prodaje','cijena za jedinicu mjere')])
+    return out.getvalue().encode('utf-8')
+
+
+def extra_index(chain,today,fetch,extract_links):
+    from html import unescape
+    if chain=='Kaufland':
+        page='https://www.kaufland.hr/akcije-novosti/popis-mpc.html'
+        html=fetch(page).decode('utf-8');m=re.search(r"data-props='([^']*dataUrlAssets[^']*)'",html)
+        if not m:raise ValueError('Nije pronađen službeni Kaufland indeks.')
+        index=urljoin(page,json.loads(unescape(m[1]))['settings']['dataUrlAssets'])
+        if urlsplit(index).netloc!='www.kaufland.hr':raise ValueError('Neslužben Kaufland indeks.')
+        entries=[]
+        for f in json.loads(fetch(index)):
+            m=re.fullmatch(r'(?:Hipermarket|Supermarket)_(.+)_(Pula|Umag|Porec|Rovinj)_(\d+)_(\d{8})_([0-9-]+)\.csv',f['label'])
+            if not m:continue
+            dt=datetime.strptime(m[4],'%d%m%Y').date()
+            if not today-timedelta(days=6)<=dt<=today:continue
+            url=urljoin(page,f['path'])
+            if urlsplit(url).netloc!='www.kaufland.hr' or urlsplit(url).path.rsplit('/',1)[1]!=f['label']:raise ValueError('Neslužben Kaufland cjenik.')
+            city='Poreč' if m[2]=='Porec' else m[2]
+            entries.append(dict(name=f['label'],url=url,city=city,address=m[1].replace('_',' '),date=dt.isoformat()))
+    else:
+        page='https://diskont.hr/cjenici/';html=fetch(page).decode('utf-8')
+        maps=[u for u in extract_links(html,page) if urlsplit(u).netloc=='drive.google.com' and '/drive/folders/' in u]
+        if not maps:raise ValueError('Nema službene Stanić mape.')
+        # First map is full price lists, second is restricted prices only.
+        index=maps[0];html=fetch(index).decode('utf-8');entries=[]
+        for m in re.finditer(r'aria-label="(MP_[^"]+\.xlsx) Microsoft Excel Shared"[^>]*ssk=\x27[^\x27]*:([A-Za-z0-9_-]{20,})-0-\d+\x27',html):
+            name,fid=m.groups();parts=re.fullmatch(r'MP_(\d+)_(.+)_(\d{2}-\d{2}-\d{4})-\d+\.xlsx',name)
+            if not parts or parts[1] not in STANIC_STORES:continue
+            dt=datetime.strptime(parts[3],'%d-%m-%Y').date()
+            if not today-timedelta(days=6)<=dt<=today:continue
+            city,address=STANIC_STORES[parts[1]]
+            if norm(city) not in norm(parts[2]):raise ValueError('Stanić oznaka grada se promijenila.')
+            entries.append(dict(name=name,url='https://drive.google.com/uc?export=download&id='+fid,city=city,address=address,date=dt.isoformat(),store_id=parts[1]))
+    if not entries:raise ValueError('Nema aktualnih istarskih cjenika za '+chain)
+    dt=max(e['date'] for e in entries);entries=[e for e in entries if e['date']==dt]
+    if chain=='Stanić' and {e['store_id'] for e in entries}!=set(STANIC_STORES):raise ValueError('Stanić popis nije potpun za podržane poslovnice.')
+    return dt,index,sorted(entries,key=lambda e:e['name'])
+
+
+def download_extra(chain,today,fetch,extract_links,validate,folder,root,previous=None):
+    dt,index,entries=extra_index(chain,today,fetch,extract_links)
+    if previous and dt<previous['date']:raise ValueError('Izvor nudi stariji cjenik.')
+    files=[];hashes=[]
+    for i,e in enumerate(entries):
+        blob=fetch(e['url']);content=xlsx_to_csv(blob) if chain=='Stanić' else blob
+        validate(chain,e['name'],content,e['url'])
+        path=folder/f'{i}.csv';path.write_bytes(content)
+        files.append(dict(name=e['name'],source=e['url'],city=e['city'],address=e['address'],path=path.relative_to(root).as_posix()))
+        hashes.append((e['name'],hashlib.sha256(blob).hexdigest()))
+    return dict(date=dt,url=index,sha256=hashlib.sha256(json.dumps(hashes,ensure_ascii=False).encode()).hexdigest(),files=files)

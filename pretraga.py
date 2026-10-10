@@ -96,7 +96,7 @@ def toilet_paper(name):
 
 def parse(chain, location, blob, source):
     text = decode(blob)
-    delimiter = ';' if text.splitlines()[0].count(';') > text.splitlines()[0].count(',') else ','
+    delimiter = max((';',',','\t'),key=text.splitlines()[0].count)
     for raw in csv.DictReader(io.StringIO(text), delimiter=delimiter):
         r = {norm(k): (v or '').strip() for k, v in raw.items() if k}
         def get(*keys): return next((r[norm(k)] for k in keys if r.get(norm(k))), '')
@@ -106,7 +106,7 @@ def parse(chain, location, blob, source):
         special = number(get('MPC za vrijeme posebnog oblika prodaje', 'MPC za vrijeme posebnog oblika prodaje EUR', 'MPC poseb oblik prod','MPC_POSEBNA_PRODAJA'))
         price = special if special and special > 0 else regular
         if price is None: continue
-        unitprice = number(get('cijena po JM', 'cijena za jedinicu mjere', 'cijena za jedinicu mjere EUR'))
+        unitprice = number(get('cijena po JM', 'cijena za jedinicu mjere', 'cijena za jedinicu mjere EUR','cijena jed.mj.(EUR)'))
         unit = get('jedinica mjere')
         quantity = get('neto kolicina')
         # Lidl embeds quantity in its unit string. Plodine KOM does not identify kg/l basis.
@@ -116,12 +116,12 @@ def parse(chain, location, blob, source):
         if chain in ('Lidl', 'SPAR / INTERSPAR') and special and special > 0:
             qty = number(quantity)
             if qty and base: unitprice = price / qty
-        available = get('dostupno nedostupno')
+        available = get('dostupno nedostupno','dostupan nedostupan')
         yield dict(chain=chain, location=location, name=name, brand=get('marka', 'marka proizvoda','BRAND'), price=price,
                    unit_price=unitprice, base=base, unit=unit, quantity=quantity, available=available or 'nepoznato',
                    source=source, date='2026-10-10', barcode=get('barkod','BARKOD_ARTIKLA'),
                    regular_price=regular, special_price=special,
-                   source_unit_price=number(get('cijena po JM', 'cijena za jedinicu mjere', 'cijena za jedinicu mjere EUR')),
+                   source_unit_price=number(get('cijena po JM', 'cijena za jedinicu mjere', 'cijena za jedinicu mjere EUR','cijena jed.mj.(EUR)')),
                    special_unit_price=number(get('poseb oblik prod za jedinicu mjere')),
                    promotion=get('naziv posebnog oblika prodaje'), promotion_flag=get('poseban oblik prodaje'))
 

@@ -60,6 +60,7 @@ def export():
     CREATE INDEX offers_product ON offers(product_id);
     CREATE INDEX offers_store ON offers(store_id);''')
     meta={'date_min':min(x['date'] for x in manifest['chains'].values()),'date_max':max(x['date'] for x in manifest['chains'].values()),'products':str(len(products)),'stores':str(store_count),'chains':str(len(manifest['chains'])),'raw_rows':str(count),'schema':'1'}
+    if manifest.get('pivac'):meta['pivac']=json.dumps(manifest['pivac'],ensure_ascii=False)
     db.executemany('INSERT INTO metadata VALUES(?,?)',meta.items());db.commit()
     assert db.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
     meta['offers']=str(db.execute('SELECT COUNT(*) FROM offers').fetchone()[0]);db.close()

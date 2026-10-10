@@ -1,6 +1,6 @@
 # Lovac na akcije — internetska baza
 
-Obrada javnih službenih cjenika Plodina, Eurospina, Lidla, SPAR-a, Studenca, Tommyja i Konzuma za podržane poslovnice u Istri. Paket je izvor podataka za zasebnu Android aplikaciju. Uključuju se samo poslovnice iz službenih datoteka: Studenac trenutačno Buzet i Funtana, Tommy Tar/Pula/Rovinj, Konzum dnevni paginirani popis za Istru. To nije popis svih fizičkih trgovina.
+Obrada javnih službenih cjenika devet lanaca za podržane poslovnice u Istri: Plodine, Eurospin, Lidl, SPAR, Studenac, Tommy, Konzum, Stanić i Kaufland. Stanić: osam provjerenih poslovnica. Kaufland: Pula, Umag, Poreč i Rovinj. To nije popis svih fizičkih trgovina. Pivac je zaseban pregled rokova službenih akcijskih kataloga; cijene nisu unesene jer sadržaj kataloga još nije dostupan za provjeru. Datoteka pivac-akcije.json je prazna. Ponude zahtijevaju cijenu, prodajnu jedinicu, rok i potvrđene istarske poslovnice; bez toga se ne dodaju.
 
 ## Aktivacija
 
@@ -25,7 +25,7 @@ Cache čuva samo aktivne CSV cjenike i do tri posljednje komprimirane baze. GitH
 Potrebni su Python 3.14 i standardna knjižnica, bez dodatnih paketa:
 
 ```
-python -m unittest test_osvjezi.py test_hosting.py test_trgovci.py test_usporedba.py
+python -m unittest test_osvjezi.py test_hosting.py test_trgovci.py test_usporedba.py test_dodatni.py
 python cloud-run.py
 ```
 

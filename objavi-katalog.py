@@ -14,7 +14,8 @@ def publish(update=True):
         raise ValueError('Nema ispravnog cjenika za: '+', '.join(sorted(missing))+'. Javna baza nije zamijenjena.')
     version={k:(v['date'],v['sha256']) for k,v in state['chains'].items()}
     # Rebuild when parsing/normalization changes, even if source files stay the same.
-    version['parser']=hashlib.sha256(b''.join((ROOT/p).read_bytes() for p in ('pretraga.py','usporedba.py','izvezi-katalog.py','trgovci.py'))).hexdigest()
+    version['parser']=hashlib.sha256(b''.join((ROOT/p).read_bytes() for p in ('pretraga.py','usporedba.py','izvezi-katalog.py','trgovci.py','pivac.py','pivac-akcije.json'))).hexdigest()
+    version['pivac']=state.get('pivac',{})
     fingerprint=hashlib.sha256(json.dumps(version,sort_keys=True).encode()).hexdigest()
     folder=ROOT/'internet-katalog';folder.mkdir(exist_ok=True)
     current=folder/'manifest.json'

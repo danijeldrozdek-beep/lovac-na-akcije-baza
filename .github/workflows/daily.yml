@@ -32,7 +32,7 @@ jobs:
           key: prices-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
           restore-keys: prices-${{ runner.os }}-
       - name: Testovi obrade i objave
-        run: python -m unittest test_osvjezi.py test_hosting.py test_trgovci.py test_usporedba.py
+        run: python -m unittest test_osvjezi.py test_hosting.py test_trgovci.py test_usporedba.py test_dodatni.py
       - name: Preuzmi cijene i pripremi bazu
         run: python cloud-run.py
         env:
