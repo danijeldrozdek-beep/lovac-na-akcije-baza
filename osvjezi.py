@@ -8,11 +8,15 @@ from urllib.parse import quote, unquote, urljoin, urlsplit, urlunsplit
 from urllib.request import Request, urlopen
 from pretraga import ROOT, decode, parse, norm
 from usporedba import build
+from trgovci import download_files, download_studenac
 
 PAGES={'Plodine':'https://www.plodine.hr/info-o-cijenama',
        'Eurospin':'https://www.eurospin.hr/cjenik/',
        'Lidl':'https://www.lidl.hr/c/cijene/s10073252',
-       'SPAR / INTERSPAR':'https://www.spar.hr/usluge/cjenici'}
+       'SPAR / INTERSPAR':'https://www.spar.hr/usluge/cjenici',
+       'Studenac':'https://www.studenac.hr/cjenici/PROIZVODI-{date}.zip',
+       'Tommy':'https://www.tommy.hr/objava-cjenika',
+       'Konzum':'https://www.konzum.hr/cjenici'}
 STATE=ROOT/'cjenici-stanje.json'
 
 def now():return datetime.now().astimezone().isoformat(timespec='seconds')
@@ -27,7 +31,7 @@ def atomic_write(path, content):
 def get(url, limit=300*1024*1024,progress=None):
     parts=urlsplit(url)
     if parts.scheme!='https':raise ValueError('Izvor mora koristiti HTTPS.')
-    safe=urlunsplit((parts.scheme,parts.netloc,quote(unquote(parts.path),safe='/'),parts.query,''))
+    safe=urlunsplit((parts.scheme,parts.netloc,quote(unquote(parts.path),safe='/'),quote(parts.query,safe='=&%+,;/?:'),''))
     req=Request(safe,headers={'User-Agent':'LovacNaAkcije/0.2 (local price comparison)','Accept-Encoding':'identity'})
     with urlopen(req,timeout=60) as response:
         data=bytearray();started=time.monotonic();last=started
@@ -137,6 +141,14 @@ def read_state():
     return json.loads(STATE.read_text(encoding='utf-8')) if STATE.exists() else {'chains':{},'status':[]}
 
 def update_one(chain,previous,folder,today,fetch=get):
+    if chain in ('Konzum','Tommy'):
+        fresh=download_files(chain,today,fetch,links,validate_csv,folder,ROOT,previous)
+        fresh['downloaded_at']=now()
+        return fresh,'Svi istarski cjenici iz indeksa preuzeti i provjereni.'
+    if chain=='Studenac':
+        fresh=download_studenac(today,fetch,validate_csv,folder,ROOT,previous)
+        fresh['downloaded_at']=now()
+        return fresh,'XML cjenici istarskih poslovnica preuzeti i provjereni.'
     dt,url,sha=discover(chain,today,fetch)
     if previous and dt<previous['date']:raise ValueError('Izvor nudi stariji cjenik; zadržan je noviji spremljeni.')
     version=remote_version(url) if not sha and (fetch is get or getattr(fetch,'official_fetch',False)) else None

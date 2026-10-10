@@ -5,14 +5,14 @@ from pretraga import ROOT, parse, norm, match
 from usporedba import size, normalize, store_info
 
 def unit_info(row):
-    unit=norm(row['unit']);found=size(row['unit']) if row['chain']=='Lidl' else size(row['name'])
+    unit=norm(row['unit']);found=size(row['unit']) if row['chain']=='Lidl' else size(row['name']) or size(row.get('quantity',''))
     basis='l' if unit in ('l','lt','ml') else 'kg' if unit in ('kg','g') else found[1] if found else None
     if basis:
         r=normalize(row,'mlijeko' if basis=='l' else 'batak')
         return r['compare_unit'],r['normalized_price'],r['normalization_note']
     # Counts refer to declared pieces, never convert washes, rolls or sheets to pieces.
     amounts=set(int(x) for x in re.findall(r'\b(\d+)\s*(?:kom|komada|komad|pcs)\b',norm(row['name'])))
-    if unit in ('kom','komad','komada'):
+    if unit in ('kom','komad','komada','ko'):
         if len(amounts)>1:return '',None,'Broj komada nije jednoznačan.'
         count=next(iter(amounts)) if amounts else 1
         if count>0:return 'kom',round(row['price']/count,4),'Broj komada iz naziva' if amounts else 'Prodajna jedinica KOM; provjeri pakiranje'
@@ -57,7 +57,7 @@ def export():
     db.executescript('''DELETE FROM offers WHERE rowid NOT IN (SELECT MIN(rowid) FROM offers GROUP BY product_id,store_id,price,unit,unit_price,availability,barcode);
     CREATE INDEX offers_product ON offers(product_id);
     CREATE INDEX offers_store ON offers(store_id);''')
-    meta={'date_min':min(x['date'] for x in manifest['chains'].values()),'date_max':max(x['date'] for x in manifest['chains'].values()),'products':str(len(products)),'stores':str(store_count),'raw_rows':str(count),'schema':'1'}
+    meta={'date_min':min(x['date'] for x in manifest['chains'].values()),'date_max':max(x['date'] for x in manifest['chains'].values()),'products':str(len(products)),'stores':str(store_count),'chains':str(len(manifest['chains'])),'raw_rows':str(count),'schema':'1'}
     db.executemany('INSERT INTO metadata VALUES(?,?)',meta.items());db.commit()
     assert db.execute('PRAGMA integrity_check').fetchone()[0]=='ok'
     meta['offers']=str(db.execute('SELECT COUNT(*) FROM offers').fetchone()[0]);db.close()

@@ -1,6 +1,6 @@
 # Lovac na akcije — internetska baza
 
-Obrada javnih službenih cjenika Plodina, Eurospina, Lidla i SPAR-a za podržane poslovnice u Istri. Paket je izvor podataka za zasebnu Android aplikaciju.
+Obrada javnih službenih cjenika Plodina, Eurospina, Lidla, SPAR-a, Studenca, Tommyja i Konzuma za podržane poslovnice u Istri. Paket je izvor podataka za zasebnu Android aplikaciju. Uključuju se samo poslovnice iz službenih datoteka: Studenac trenutačno Buzet i Funtana, Tommy Tar/Pula/Rovinj, Konzum dnevni paginirani popis za Istru. To nije popis svih fizičkih trgovina.
 
 ## Aktivacija
 
@@ -14,18 +14,18 @@ GitHub Pages na besplatnom planu traži javni repozitorij. Kod obrade u ovom pak
 
 ## Dnevno ažuriranje
 
-Naredba `python cloud-run.py` prvo provjeri izvore, izradi kompletan katalog i provjeri SHA-256, raspakiravanje i SQLite integritet. Neuspjeli lanci zadržavaju posljednji ispravan cjenik iz cachea. Kod prvog pokretanja sva četiri lanca moraju imati ispravan cjenik. Ako priprema zakaže, korak objave se ne izvršava pa postojeća Pages objava ostaje.
+Naredba `python cloud-run.py` prvo provjeri izvore, izradi kompletan katalog i provjeri SHA-256, raspakiravanje i SQLite integritet. Neuspjeli lanci zadržavaju posljednji ispravan cjenik iz cachea. Kod prvog pokretanja svi podržani lanci moraju imati ispravan cjenik. Ako priprema zakaže, korak objave se ne izvršava pa postojeća Pages objava ostaje.
 
 Raspored je 08:17 UTC, odnosno 10:17 ljeti i 09:17 zimi u Hrvatskoj. GitHub može odgoditi raspored; javnim repozitorijima bez aktivnosti 60 dana isključuje zakazane workflowe. Provjeri Actions i po potrebi ponovno uključi raspored. To nije servis s jamstvom dostupnosti. Za pouzdano stalno pokretanje može se kasnije prijeći na VPS.
 
-Cache čuva samo aktivne CSV cjenike i do tri posljednje komprimirane baze. GitHub može ukloniti cache; tada je potrebno ponovno uspješno preuzeti sva četiri izvora. Nikad se ne objavljuje nepotpuna početna baza. Status pojedinog lanca i stvarni datum cjenika dostupni su u `status.json`.
+Cache čuva samo aktivne CSV cjenike i do tri posljednje komprimirane baze. GitHub može ukloniti cache; tada je potrebno ponovno uspješno preuzeti sve podržane izvore. Nikad se ne objavljuje nepotpuna početna baza. Status pojedinog lanca i stvarni datum cjenika dostupni su u `status.json`.
 
 ## Lokalna provjera
 
 Potrebni su Python 3.14 i standardna knjižnica, bez dodatnih paketa:
 
 ```
-python -m unittest test_osvjezi.py test_hosting.py
+python -m unittest test_osvjezi.py test_hosting.py test_trgovci.py test_usporedba.py
 python cloud-run.py
 ```
 

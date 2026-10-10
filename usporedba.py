@@ -36,15 +36,17 @@ def normalize(row, category):
         base='l' if unit in ('l','lt','ml') else 'kg'
         if base!=expected:uncertain='Jedinica nije usporediva s ovom vrstom proizvoda.'
         else:
-            qty=dec(row.get('quantity'))
+            raw_quantity=row.get('quantity','')
+            declared=size(raw_quantity)
+            qty=declared[0] if declared and declared[1]==base else dec(raw_quantity)
             if qty is not None and qty>0:
-                qty=qty/(1000 if unit in ('g','ml') else 1)
+                if not declared:qty=qty/(1000 if unit in ('g','ml') else 1)
                 per=p/qty;basis='Neto količina iz cjenika'
-            elif row['chain']=='Plodine' and unit=='kg':
+            elif row['chain'] in ('Plodine','Studenac') and unit=='kg':
                 mode='vaganje';per=p;basis='Prodajna jedinica KG u cjeniku'
             else:uncertain='Nedostaje neto količina.'
     else:
-        found=size(unit) if row['chain']=='Lidl' else size(name)
+        found=size(unit) if row['chain']=='Lidl' else size(name) or size(row.get('quantity',''))
         if found and found[1]==expected:
             qty=found[0];per=p/qty;basis='Količina iz oznake jedinice' if row['chain']=='Lidl' else 'Količina iz naziva proizvoda'
         else:uncertain='Nije jednoznačno navedena količina u litrama ili kilogramima.'
