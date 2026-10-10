@@ -1,0 +1,62 @@
+name: Dnevno osvjezavanje cijena
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+  schedule:
+    - cron: '17 8 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: lovac-katalog
+  cancel-in-progress: false
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      pages: read
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.14'
+      - uses: actions/cache/restore@v4
+        id: prices
+        with:
+          path: |
+            cjenici
+            cjenici-stanje.json
+            internet-katalog
+          key: prices-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: prices-${{ runner.os }}-
+      - name: Testovi obrade i objave
+        run: python -m unittest test_osvjezi.py test_hosting.py
+      - name: Preuzmi cijene i pripremi bazu
+        run: python cloud-run.py
+        env:
+          TZ: Europe/Zagreb
+      - uses: actions/cache/save@v4
+        with:
+          path: |
+            cjenici
+            cjenici-stanje.json
+            internet-katalog
+          key: prices-${{ runner.os }}-${{ github.run_id }}-${{ github.run_attempt }}
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v4
+        with:
+          path: internet-katalog
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/deploy-pages@v4
+        id: deployment

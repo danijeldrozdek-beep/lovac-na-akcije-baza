@@ -1,0 +1,8 @@
+__pycache__/
+cjenici/
+cjenici-stanje.json
+internet-katalog/
+android/
+*.sqlite
+*.bin
+KATALOG-STATUS.json
